@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYOA Banana</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+Pro:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    >
+    <style>
+      body {
+        font-family: "Source Sans Pro", sans-serif;
+      }
+
+      .story-text {
+        font-family: "Crimson Text", serif;
+        line-height: 1.7;
+      }
+
+      .header-title {
+        font-family: "Crimson Text", serif;
+        font-weight: 600;
+      }
+
+      .story-entry {
+        animation: fadeIn 0.5s ease-in-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .loader {
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .choice-btn {
+        transition: all 0.2s ease-in-out;
+      }
+
+      .choice-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      }
+
+      .choice-btn:active {
+        transform: translateY(0);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-900 text-white min-h-screen">
+    <div id="game-container" class="flex flex-col h-screen max-w-md mx-auto">
+      <!-- Header -->
+      <header
+        class="flex justify-between items-center py-4 px-4 border-b border-gray-800"
+      >
+        <h1 class="header-title text-2xl font-bold text-white">CYOA Banana</h1>
+        <button
+          id="settings-btn"
+          class="text-gray-400 hover:text-white transition-colors duration-200"
+          title="Change API Key"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            >
+            </path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            >
+            </path>
+          </svg>
+        </button>
+      </header>
+
+      <!-- Story Log -->
+      <div id="story-log" class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <!-- Story entries will be dynamically added here -->
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="loading-indicator" class="hidden px-4 py-6 text-center">
+        <div
+          class="loader w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"
+        >
+        </div>
+        <p class="text-gray-400">AI is crafting your adventure...</p>
+      </div>
+
+      <!-- Input Area -->
+      <div
+        id="input-area"
+        class="px-4 py-4 border-t border-gray-800 bg-gray-900"
+      >
+        <!-- Custom Response -->
+        <div class="mb-4">
+          <textarea
+            id="custom-response"
+            placeholder="Enter your action..."
+            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows="2"
+          ></textarea>
+          <button
+            id="send-button"
+            class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+          >
+            Send
+          </button>
+        </div>
+
+        <!-- Choices Container -->
+        <div id="choices-container" class="grid grid-cols-2 gap-3">
+          <!-- Choice buttons will be dynamically populated here -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // DOM Elements
+      const storyLog = document.getElementById("story-log");
+      const loadingIndicator = document.getElementById(
+        "loading-indicator",
+      );
+      const inputArea = document.getElementById("input-area");
+      const customResponse = document.getElementById("custom-response");
+      const sendButton = document.getElementById("send-button");
+      const choicesContainer = document.getElementById(
+        "choices-container",
+      );
+      const settingsBtn = document.getElementById("settings-btn");
+
+      // Game State
+      let storyHistory = [];
+      let previousImageBase64 = null;
+      let isLoading = false;
+
+      // API Configuration
+      let apiKey = localStorage.getItem("geminiApiKey") || "";
+      const textGenerationUrl =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent";
+      const imageGenerationUrl =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent";
+
+      // Initialize game when DOM is loaded
+      document.addEventListener("DOMContentLoaded", () => {
+        checkApiKey();
+      });
+
+      // Event Listeners
+      sendButton.addEventListener("click", () => {
+        const text = customResponse.value.trim();
+        if (text) {
+          handlePlayerChoice(text);
+          customResponse.value = "";
+        }
+      });
+
+      customResponse.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendButton.click();
+        }
+      });
+
+      settingsBtn.addEventListener("click", () => {
+        const newApiKey = prompt(
+          "Enter your new Google GenAI API key:",
+        );
+        if (newApiKey && newApiKey.trim()) {
+          apiKey = newApiKey.trim();
+          localStorage.setItem("geminiApiKey", apiKey);
+          alert("API key updated successfully!");
+        }
+      });
+
+      function checkApiKey() {
+        if (!apiKey) {
+          const userApiKey = prompt(
+            "Please enter your Google GenAI API key to start the adventure:",
+          );
+          if (userApiKey && userApiKey.trim()) {
+            apiKey = userApiKey.trim();
+            localStorage.setItem("geminiApiKey", apiKey);
+            initGame();
+          } else {
+            // Show error message if no API key provided
+            addStoryEntry(
+              "No API key provided. Please refresh the page and enter your Google GenAI API key to start playing.",
+              null,
+            );
+            updateChoices([
+              "Refresh Page",
+              "Enter API Key",
+            ]);
+
+            // Handle the special buttons
+            const refreshBtn = document.querySelector(
+              "#choices-container button:first-child",
+            );
+            const apiKeyBtn = document.querySelector(
+              "#choices-container button:last-child",
+            );
+
+            if (refreshBtn) {
+              refreshBtn.addEventListener(
+                "click",
+                () => window.location.reload(),
+              );
+            }
+            if (apiKeyBtn) {
+              apiKeyBtn.addEventListener("click", () => {
+                const newApiKey = prompt(
+                  "Please enter your Google GenAI API key:",
+                );
+                if (newApiKey && newApiKey.trim()) {
+                  apiKey = newApiKey.trim();
+                  localStorage.setItem("geminiApiKey", apiKey);
+                  choicesContainer.innerHTML = "";
+                  initGame();
+                }
+              });
+            }
+          }
+        } else {
+          initGame();
+        }
+      }
+
+      async function initGame() {
+        setLoading(true);
+
+        try {
+          // Generate initial story
+          const initialStory = await generateInitialStory();
+
+          // Generate initial image
+          const initialImage = await generateInitialImage(initialStory);
+
+          // Add to UI
+          addStoryEntry(initialStory, initialImage);
+          updateChoices([
+            "Follow the path",
+            "Investigate the cave",
+            "Search for supplies",
+            "Call out for help",
+          ]);
+
+          // Store initial state
+          storyHistory.push({
+            role: "user",
+            parts: [{ text: "Start the adventure" }],
+          });
+          storyHistory.push({
+            role: "model",
+            parts: [{ text: initialStory }],
+          });
+          previousImageBase64 = initialImage;
+        } catch (error) {
+          console.error("Failed to initialize game:", error);
+          addStoryEntry(
+            "Failed to start the adventure. Please check your API key and try again.",
+            null,
+          );
+          updateChoices([
+            "Refresh Page",
+            "Change API Key",
+          ]);
+
+          // Handle error recovery
+          const refreshBtn = document.querySelector(
+            "#choices-container button:first-child",
+          );
+          const apiKeyBtn = document.querySelector(
+            "#choices-container button:last-child",
+          );
+
+          if (refreshBtn) {
+            refreshBtn.addEventListener(
+              "click",
+              () => window.location.reload(),
+            );
+          }
+          if (apiKeyBtn) {
+            apiKeyBtn.addEventListener("click", () => {
+              const newApiKey = prompt(
+                "Please enter a new Google GenAI API key:",
+              );
+              if (newApiKey && newApiKey.trim()) {
+                apiKey = newApiKey.trim();
+                localStorage.setItem("geminiApiKey", apiKey);
+                choicesContainer.innerHTML = "";
+                initGame();
+              }
+            });
+          }
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      async function handlePlayerChoice(choiceText) {
+        if (isLoading || !choiceText.trim()) return;
+
+        setLoading(true);
+
+        try {
+          // Add player choice to history
+          storyHistory.push({
+            role: "user",
+            parts: [{ text: choiceText }],
+          });
+
+          // Generate next story part
+          const nextStory = await generateTextWithHistory();
+
+          // Generate image with continuity
+          const nextImage = await generateImageWithContinuity(
+            nextStory,
+            choiceText,
+          );
+
+          // Update UI
+          addStoryEntry(nextStory, nextImage);
+
+          // Extract new choices from story (simplified - in real implementation, AI would provide structured choices)
+          const newChoices = extractChoicesFromStory(nextStory);
+          updateChoices(newChoices);
+
+          // Update state
+          storyHistory.push({
+            role: "model",
+            parts: [{ text: nextStory }],
+          });
+          previousImageBase64 = nextImage;
+        } catch (error) {
+          console.error("Failed to process choice:", error);
+          addStoryEntry(
+            "Something went wrong. Please try again.",
+            null,
+          );
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      function addStoryEntry(text, imageBase64) {
+        const storyEntry = document.createElement("div");
+        storyEntry.className = "story-entry bg-gray-800 rounded-lg p-4";
+
+        let html =
+          `<p class="story-text text-white leading-relaxed mb-3">${text}</p>`;
+
+        if (imageBase64) {
+          html +=
+            `<img src="data:image/jpeg;base64,${imageBase64}" alt="Scene illustration" class="w-full h-48 object-cover rounded-lg mb-3">`;
+        }
+
+        storyEntry.innerHTML = html;
+        storyLog.appendChild(storyEntry);
+
+        // Scroll to bottom
+        storyLog.scrollTop = storyLog.scrollHeight;
+      }
+
+      function updateChoices(choices) {
+        choicesContainer.innerHTML = "";
+
+        choices.forEach((choice) => {
+          const button = document.createElement("button");
+          button.className =
+            "choice-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200";
+          button.textContent = choice;
+          button.addEventListener(
+            "click",
+            () => handlePlayerChoice(choice),
+          );
+          choicesContainer.appendChild(button);
+        });
+      }
+
+      function setLoading(state) {
+        isLoading = state;
+        loadingIndicator.classList.toggle("hidden", !state);
+        inputArea.classList.toggle("opacity-50", state);
+        inputArea.classList.toggle("pointer-events-none", state);
+      }
+
+      function extractChoicesFromStory(story) {
+        // Simplified choice extraction - in real implementation, AI would provide structured choices
+        const defaultChoices = [
+          "Continue forward",
+          "Explore the area",
+          "Search for clues",
+          "Take a different path",
+        ];
+        return defaultChoices;
+      }
+
+      // API Functions
+      async function makeApiCall(url, payload) {
+        const maxRetries = 5;
+        let retryCount = 0;
+
+        while (retryCount < maxRetries) {
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+          } catch (error) {
+            retryCount++;
+            if (retryCount === maxRetries) {
+              throw error;
+            }
+
+            // Exponential backoff
+            const delay = Math.pow(2, retryCount) * 1000;
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+        }
+      }
+
+      async function generateInitialStory() {
+        const payload = {
+          contents: [{
+            parts: [{
+              text:
+                "You are a master storyteller creating an immersive Choose-Your-Own-Adventure game. Generate an opening scene that sets up an exciting adventure. The scene should be descriptive and atmospheric, ending with a question or decision point. Keep it under 100 words and make it engaging.",
+            }],
+          }],
+        };
+
+        const response = await makeApiCall(textGenerationUrl, payload);
+        return response.candidates[0].content.parts[0].text;
+      }
+
+      async function generateInitialImage(storyText) {
+        const payload = {
+          contents: [{
+            parts: [{
+              text:
+                `Generate an atmospheric image for this scene: ${storyText}. The image should be dark, mysterious, and cinematic, suitable for a mobile game interface.`,
+            }],
+          }],
+        };
+
+        const response = await makeApiCall(imageGenerationUrl, payload);
+        return response.candidates[0].content.parts[0].inlineData.data;
+      }
+
+      async function generateTextWithHistory() {
+        const payload = {
+          contents: storyHistory,
+        };
+
+        const response = await makeApiCall(textGenerationUrl, payload);
+        return response.candidates[0].content.parts[0].text;
+      }
+
+      async function generateImageWithContinuity(
+        storyText,
+        userAction,
+      ) {
+        const payload = {
+          contents: [{
+            parts: [
+              {
+                text:
+                  `Generate an image that continues the visual story. Previous scene context: ${storyText}. User action: ${userAction}. Maintain visual continuity with the previous scene while showing the new development.`,
+              },
+              {
+                inlineData: {
+                  mimeType: "image/jpeg",
+                  data: previousImageBase64,
+                },
+              },
+            ],
+          }],
+        };
+
+        const response = await makeApiCall(imageGenerationUrl, payload);
+        return response.candidates[0].content.parts[0].inlineData.data;
+      }
+
+      // Mock API responses for demo purposes (remove in production)
+      function mockApiResponse() {
+        return {
+          candidates: [{
+            content: {
+              parts: [{
+                text:
+                  "You find yourself in a dimly lit forest, the air thick with the scent of pine and damp earth. A narrow path winds ahead, disappearing into the shadows. To your left, a faint glow emanates from a hidden cave. What do you do?",
+              }],
+            },
+          }],
+        };
+      }
+    </script>
+  </body>
+</html>
