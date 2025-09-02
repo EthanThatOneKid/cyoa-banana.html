@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYOA Banana</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍌</text></svg>"
+    >
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+Pro:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    >
+    <style>
+      body {
+        font-family: "Source Sans Pro", sans-serif;
+      }
+
+      .story-text {
+        font-family: "Crimson Text", serif;
+        line-height: 1.7;
+      }
+
+      .header-title {
+        font-family: "Crimson Text", serif;
+        font-weight: 600;
+      }
+
+      .story-entry {
+        animation: fadeIn 0.5s ease-in-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .loader {
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .choice-btn {
+        transition: all 0.2s ease-in-out;
+      }
+
+      .choice-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      }
+
+      .choice-btn:active {
+        transform: translateY(0);
+      }
+
+      /* Custom Scrollbar Styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1f2937;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #4b5563;
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+      }
+
+      ::-webkit-scrollbar-thumb:active {
+        background: #9ca3af;
+      }
+
+      /* Firefox scrollbar styling */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #4b5563 #1f2937;
+      }
+
+      /* Story log specific scrollbar */
+      #story-log::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      #story-log::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      #story-log::-webkit-scrollbar-thumb {
+        background: #374151;
+        border-radius: 3px;
+      }
+
+      #story-log::-webkit-scrollbar-thumb:hover {
+        background: #4b5563;
+      }
+
+      /* Sidebar scrollbar */
+      #conversations-list::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      #conversations-list::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      #conversations-list::-webkit-scrollbar-thumb {
+        background: #374151;
+        border-radius: 3px;
+      }
+
+      #conversations-list::-webkit-scrollbar-thumb:hover {
+        background: #4b5563;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-900 text-white min-h-screen">
+    <!-- Sidebar Toggle Button -->
+    <button
+      id="sidebar-toggle"
+      class="fixed top-4 left-4 z-50 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors duration-200"
+      title="Toggle Conversations"
+    >
+      <svg
+        class="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 6h16M4 12h16M4 18h16"
+        >
+        </path>
+      </svg>
+    </button>
+
+    <!-- Sidebar -->
+    <div
+      id="sidebar"
+      class="fixed left-0 top-0 h-full w-80 bg-gray-800 border-r border-gray-700 transform -translate-x-full transition-transform duration-300 z-40"
+    >
+      <div class="p-4 border-b border-gray-700">
+        <h2 class="text-lg font-semibold text-white mb-4">Conversations</h2>
+        <button
+          id="new-conversation-btn"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+        >
+          + New Adventure
+        </button>
+      </div>
+      <div id="conversations-list" class="flex-1 overflow-y-auto p-4">
+        <!-- Conversations will be dynamically added here -->
+      </div>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div
+      id="sidebar-overlay"
+      class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden"
+    >
+    </div>
+
+    <div id="game-container" class="flex flex-col h-screen max-w-md mx-auto">
+      <!-- Header -->
+      <header
+        class="flex justify-between items-center py-4 px-4 border-b border-gray-800"
+      >
+        <h1 class="header-title text-2xl font-bold text-white">CYOA Banana</h1>
+        <div class="flex gap-2">
+          <button
+            id="share-btn"
+            class="text-gray-400 hover:text-white transition-colors duration-200"
+            title="Share Adventure"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+              >
+              </path>
+            </svg>
+          </button>
+          <button
+            id="settings-btn"
+            class="text-gray-400 hover:text-white transition-colors duration-200"
+            title="Change API Key"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              >
+              </path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              >
+              </path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Story Log -->
+      <div id="story-log" class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <!-- Story entries will be dynamically added here -->
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="loading-indicator" class="hidden px-4 py-6 text-center">
+        <div
+          class="loader w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"
+        >
+        </div>
+        <p class="text-gray-400">AI is crafting your adventure...</p>
+      </div>
+
+      <!-- Input Area -->
+      <div
+        id="input-area"
+        class="px-4 py-4 border-t border-gray-800 bg-gray-900"
+      >
+        <!-- Custom Response -->
+        <div class="mb-4">
+          <textarea
+            id="custom-response"
+            placeholder="Enter your action..."
+            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows="2"
+          ></textarea>
+          <button
+            id="send-button"
+            class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+          >
+            Send
+          </button>
+        </div>
+
+        <!-- Choices Container -->
+        <div id="choices-container" class="grid grid-cols-2 gap-3">
+          <!-- Choice buttons will be dynamically populated here -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // DOM Elements
+      const storyLog = document.getElementById("story-log");
+      const loadingIndicator = document.getElementById(
+        "loading-indicator",
+      );
+      const inputArea = document.getElementById("input-area");
+      const customResponse = document.getElementById("custom-response");
+      const sendButton = document.getElementById("send-button");
+      const choicesContainer = document.getElementById(
+        "choices-container",
+      );
+      const settingsBtn = document.getElementById("settings-btn");
+      const shareBtn = document.getElementById("share-btn");
+      const sidebarToggle = document.getElementById("sidebar-toggle");
+      const sidebar = document.getElementById("sidebar");
+      const sidebarOverlay = document.getElementById("sidebar-overlay");
+      const conversationsList = document.getElementById(
+        "conversations-list",
+      );
+      const newConversationBtn = document.getElementById(
+        "new-conversation-btn",
+      );
+
+      // Game State
+      let storyHistory = [];
+      let previousImageBase64 = null;
+      let isLoading = false;
+      let lastUserMessage = null;
+      let currentConversationId = null;
+      let conversations = {};
+      let gameState = {
+        storyHistory: [],
+        previousImageBase64: null,
+        isInitialized: false,
+      };
+
+      // API Configuration
+      let apiKey = localStorage.getItem("geminiApiKey") || "";
+      const textGenerationUrl =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+      const imageGenerationUrl =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent";
+
+      // Initialize game when DOM is loaded
+      document.addEventListener("DOMContentLoaded", () => {
+        // First, try to load a shared adventure from URL
+        const sharedAdventureLoaded = loadAdventureFromUrl();
+
+        if (!sharedAdventureLoaded) {
+          // If no shared adventure, load conversations from localStorage
+          const conversationsLoaded = loadConversations();
+
+          if (!conversationsLoaded) {
+            // If no conversations exist, create a new one
+            createNewConversation();
+          }
+        }
+
+        checkApiKey();
+
+        // Scroll to bottom on load
+        scrollToBottom();
+      });
+
+      // Event Listeners
+      sendButton.addEventListener("click", () => {
+        const text = customResponse.value.trim();
+        if (text) {
+          handlePlayerChoice(text);
+          customResponse.value = "";
+        }
+      });
+
+      customResponse.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendButton.click();
+        }
+      });
+
+      shareBtn.addEventListener("click", () => {
+        shareAdventure();
+      });
+
+      // Sidebar Event Listeners
+      sidebarToggle.addEventListener("click", () => {
+        toggleSidebar();
+      });
+
+      sidebarOverlay.addEventListener("click", () => {
+        closeSidebar();
+      });
+
+      newConversationBtn.addEventListener("click", () => {
+        createNewConversation();
+      });
+
+      settingsBtn.addEventListener("click", () => {
+        const choice = prompt(
+          "Settings:\n\n1. Change API Key\n2. Start New Game\n3. Cancel\n\nEnter 1, 2, or 3:",
+        );
+
+        if (choice === "1") {
+          const newApiKey = prompt(
+            "Enter your new Google GenAI API key:\n\nGet a free API key at: https://aistudio.google.com/app/apikey",
+          );
+          if (newApiKey && newApiKey.trim()) {
+            apiKey = newApiKey.trim();
+            localStorage.setItem("geminiApiKey", apiKey);
+            alert("API key updated successfully!");
+          }
+        } else if (choice === "2") {
+          if (
+            confirm(
+              "Are you sure you want to start a new game? This will clear your current progress.",
+            )
+          ) {
+            clearGameState();
+            initGame();
+          }
+        }
+      });
+
+      // Game State Management
+      function saveGameState() {
+        if (currentConversationId) {
+          // Only update title if it's still the auto-generated one
+          const currentTitle =
+            conversations[currentConversationId]?.title ||
+            getConversationTitle();
+          const autoTitle = getConversationTitle();
+
+          conversations[currentConversationId] = {
+            id: currentConversationId,
+            storyHistory: storyHistory,
+            previousImageBase64: previousImageBase64,
+            isInitialized: true,
+            lastUpdated: Date.now(),
+            title: currentTitle === autoTitle
+              ? autoTitle
+              : currentTitle,
+          };
+          localStorage.setItem(
+            "cyoaConversations",
+            JSON.stringify(conversations),
+          );
+          updateConversationsList();
+        }
+      }
+
+      function loadConversations() {
+        try {
+          const savedConversations = localStorage.getItem(
+            "cyoaConversations",
+          );
+          if (savedConversations) {
+            conversations = JSON.parse(savedConversations);
+            updateConversationsList();
+
+            // If there are conversations, load the most recent one
+            const conversationIds = Object.keys(conversations);
+            if (conversationIds.length > 0) {
+              const mostRecent = conversationIds.reduce(
+                (latest, id) => {
+                  return conversations[id].lastUpdated >
+                      conversations[latest].lastUpdated
+                    ? id
+                    : latest;
+                },
+              );
+              loadConversation(mostRecent);
+              return true;
+            }
+          }
+        } catch (error) {
+          console.warn("Failed to load conversations:", error);
+          conversations = {};
+        }
+        return false;
+      }
+
+      function loadConversation(conversationId) {
+        if (conversations[conversationId]) {
+          const conversation = conversations[conversationId];
+          currentConversationId = conversationId;
+          storyHistory = conversation.storyHistory || [];
+          previousImageBase64 = conversation.previousImageBase64 ||
+            null;
+
+          // Clear and restore UI
+          storyLog.innerHTML = "";
+          if (storyHistory.length > 0) {
+            restoreGameUI();
+          }
+
+          updateConversationsList();
+          closeSidebar();
+        }
+      }
+
+      function createNewConversation() {
+        const conversationId = "conv_" + Date.now();
+        currentConversationId = conversationId;
+        storyHistory = [];
+        previousImageBase64 = null;
+        lastUserMessage = null;
+
+        // Clear UI
+        storyLog.innerHTML = "";
+        choicesContainer.innerHTML = "";
+
+        // Save the new conversation
+        saveGameState();
+
+        // Show prompt selection dialog
+        showPromptSelectionDialog();
+
+        closeSidebar();
+      }
+
+      function deleteConversation(conversationId) {
+        if (
+          confirm("Are you sure you want to delete this conversation?")
+        ) {
+          delete conversations[conversationId];
+          localStorage.setItem(
+            "cyoaConversations",
+            JSON.stringify(conversations),
+          );
+
+          if (currentConversationId === conversationId) {
+            // If we deleted the current conversation, create a new one
+            createNewConversation();
+          } else {
+            updateConversationsList();
+          }
+        }
+      }
+
+      function getConversationTitle() {
+        if (storyHistory.length === 0) return "New Adventure";
+
+        // Try to get the first story text as title
+        for (let i = 0; i < storyHistory.length; i++) {
+          if (
+            storyHistory[i].role === "model" &&
+            storyHistory[i].parts[0].text
+          ) {
+            const text = storyHistory[i].parts[0].text;
+            // Take first 50 characters and clean up
+            return text.substring(0, 50).replace(/\n/g, " ").trim() +
+              (text.length > 50 ? "..." : "");
+          }
+        }
+        return "Adventure";
+      }
+
+      function restoreGameUI() {
+        // Clear any existing content
+        storyLog.innerHTML = "";
+
+        // Restore story entries from history
+        for (let i = 0; i < storyHistory.length; i += 2) {
+          if (i + 1 < storyHistory.length) {
+            const userMessage = storyHistory[i];
+            const aiResponse = storyHistory[i + 1];
+
+            if (
+              userMessage.role === "user" && aiResponse.role === "model"
+            ) {
+              // Display user's choice
+              const userChoice = userMessage.parts[0].text;
+              addStoryEntry(userChoice, null, true);
+
+              // Display AI response
+              const storyText = aiResponse.parts[0].text;
+              const imageData = (i + 1 === storyHistory.length - 1)
+                ? previousImageBase64
+                : null;
+              // Use fallback alt text for restored images
+              const fallbackAltText = imageData
+                ? "Scene illustration from the adventure story"
+                : null;
+              addStoryEntry(
+                storyText,
+                imageData,
+                false,
+                fallbackAltText,
+              );
+            }
+          }
+        }
+
+        // Set up default choices for continuing the game
+        const defaultChoices = [
+          "Continue the adventure",
+          "Explore further",
+          "Take a different approach",
+          "Look for clues",
+        ];
+        updateChoices(defaultChoices);
+
+        // Scroll to bottom after restoring UI
+        scrollToBottom();
+      }
+
+      function clearGameState() {
+        if (currentConversationId) {
+          delete conversations[currentConversationId];
+          localStorage.setItem(
+            "cyoaConversations",
+            JSON.stringify(conversations),
+          );
+        }
+        storyHistory = [];
+        previousImageBase64 = null;
+        currentConversationId = null;
+        storyLog.innerHTML = "";
+        updateConversationsList();
+      }
+
+      // Sidebar UI Functions
+      function toggleSidebar() {
+        sidebar.classList.toggle("-translate-x-full");
+        sidebarOverlay.classList.toggle("hidden");
+      }
+
+      function closeSidebar() {
+        sidebar.classList.add("-translate-x-full");
+        sidebarOverlay.classList.add("hidden");
+      }
+
+      function updateConversationsList() {
+        conversationsList.innerHTML = "";
+
+        const conversationIds = Object.keys(conversations).sort(
+          (a, b) => {
+            return conversations[b].lastUpdated -
+              conversations[a].lastUpdated;
+          },
+        );
+
+        conversationIds.forEach((conversationId) => {
+          const conversation = conversations[conversationId];
+          const isActive = conversationId === currentConversationId;
+
+          const conversationElement = document.createElement("div");
+          conversationElement.className =
+            `mb-2 p-3 rounded-lg cursor-pointer transition-colors duration-200 ${
+              isActive ? "bg-blue-600" : "bg-gray-700 hover:bg-gray-600"
+            }`;
+          conversationElement.setAttribute(
+            "data-conversation-id",
+            conversationId,
+          );
+
+          conversationElement.innerHTML = `
+              <div class="flex justify-between items-start">
+                <div class="flex-1 min-w-0">
+                  <h3 
+                    class="text-sm font-medium text-white truncate cursor-pointer hover:text-blue-300 transition-colors duration-200"
+                    onclick="event.stopPropagation(); editConversationTitle('${conversationId}')"
+                    title="Click to edit title"
+                  >${conversation.title}</h3>
+                  <p class="text-xs text-gray-400 mt-1">${
+            new Date(conversation.lastUpdated).toLocaleDateString()
+          }</p>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <button 
+                    class="text-gray-400 hover:text-blue-400 transition-colors duration-200"
+                    onclick="event.stopPropagation(); editConversationTitle('${conversationId}')"
+                    title="Edit title"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                  </button>
+                  <button 
+                    class="text-gray-400 hover:text-red-400 transition-colors duration-200"
+                    onclick="event.stopPropagation(); deleteConversation('${conversationId}')"
+                    title="Delete conversation"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            `;
+
+          conversationElement.addEventListener("click", () => {
+            loadConversation(conversationId);
+          });
+
+          conversationsList.appendChild(conversationElement);
+        });
+      }
+
+      function editConversationTitle(conversationId) {
+        const conversation = conversations[conversationId];
+        if (!conversation) return;
+
+        // Find the conversation element in the DOM
+        const conversationElements = conversationsList.querySelectorAll(
+          "[data-conversation-id]",
+        );
+        let targetElement = null;
+
+        for (let element of conversationElements) {
+          if (
+            element.getAttribute("data-conversation-id") ===
+              conversationId
+          ) {
+            targetElement = element;
+            break;
+          }
+        }
+
+        if (!targetElement) return;
+
+        // Find the title element
+        const titleElement = targetElement.querySelector("h3");
+        if (!titleElement) return;
+
+        // Create input field
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = conversation.title;
+        input.className =
+          "w-full bg-gray-600 text-white text-sm px-2 py-1 rounded border border-gray-500 focus:border-blue-400 focus:outline-none";
+        input.maxLength = 100;
+
+        // Replace title with input
+        const originalTitle = titleElement.textContent;
+        titleElement.style.display = "none";
+        titleElement.parentNode.insertBefore(input, titleElement);
+        input.focus();
+        input.select();
+
+        // Handle save
+        const saveTitle = () => {
+          const newTitle = input.value.trim();
+          if (newTitle !== "" && newTitle !== originalTitle) {
+            // Update the conversation title
+            conversation.title = newTitle;
+            conversation.lastUpdated = Date.now();
+
+            // Save to localStorage
+            localStorage.setItem(
+              "cyoaConversations",
+              JSON.stringify(conversations),
+            );
+
+            // Update the UI
+            updateConversationsList();
+          } else {
+            // Restore original title
+            titleElement.style.display = "block";
+            titleElement.parentNode.removeChild(input);
+          }
+        };
+
+        // Handle cancel
+        const cancelEdit = () => {
+          titleElement.style.display = "block";
+          titleElement.parentNode.removeChild(input);
+        };
+
+        // Event listeners
+        input.addEventListener("blur", saveTitle);
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            saveTitle();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancelEdit();
+          }
+        });
+      }
+
+      function showPromptSelectionDialog() {
+        // Create modal overlay
+        const modal = document.createElement("div");
+        modal.className =
+          "fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4";
+        modal.id = "prompt-selection-modal";
+
+        // Create modal content
+        modal.innerHTML = `
+          <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h2 class="text-xl font-bold text-white mb-4">Start Your Adventure</h2>
+            <p class="text-gray-300 mb-6">Choose how you'd like to begin your story:</p>
+            
+            <div class="space-y-4">
+              <button 
+                id="random-start-btn"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <span>Random Adventure</span>
+              </button>
+              
+              <button 
+                id="custom-start-btn"
+                class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                <span>Custom Prompt</span>
+              </button>
+            </div>
+            
+            <div class="mt-4 text-center">
+              <button 
+                id="cancel-start-btn"
+                class="text-gray-400 hover:text-white transition-colors duration-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        `;
+
+        // Add to DOM
+        document.body.appendChild(modal);
+
+        // Event listeners
+        document.getElementById("random-start-btn").addEventListener(
+          "click",
+          () => {
+            closePromptSelectionDialog();
+            if (apiKey) {
+              initGame();
+            }
+          },
+        );
+
+        document.getElementById("custom-start-btn").addEventListener(
+          "click",
+          () => {
+            closePromptSelectionDialog();
+            showCustomPromptDialog();
+          },
+        );
+
+        document.getElementById("cancel-start-btn").addEventListener(
+          "click",
+          () => {
+            closePromptSelectionDialog();
+            // If no other conversations exist, create a default one
+            if (Object.keys(conversations).length === 0) {
+              createNewConversation();
+            }
+          },
+        );
+
+        // Close on overlay click
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) {
+            closePromptSelectionDialog();
+          }
+        });
+      }
+
+      function showCustomPromptDialog() {
+        // Create modal overlay
+        const modal = document.createElement("div");
+        modal.className =
+          "fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4";
+        modal.id = "custom-prompt-modal";
+
+        // Create modal content
+        modal.innerHTML = `
+          <div class="bg-gray-800 rounded-lg p-6 w-full max-w-lg">
+            <h2 class="text-xl font-bold text-white mb-4">Custom Story Prompt</h2>
+            <p class="text-gray-300 mb-4">Describe how you'd like your adventure to begin:</p>
+            
+            <textarea 
+              id="custom-prompt-textarea"
+              class="w-full h-32 bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:border-blue-400 focus:outline-none resize-none"
+              placeholder="Example: You are a detective investigating a mysterious disappearance in a small coastal town..."
+              maxlength="500"
+            ></textarea>
+            
+            <div class="flex justify-between items-center mt-4">
+              <span class="text-sm text-gray-400">
+                <span id="char-count">0</span>/500 characters
+              </span>
+              <div class="space-x-2">
+                <button 
+                  id="cancel-custom-btn"
+                  class="px-4 py-2 text-gray-400 hover:text-white transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button 
+                  id="start-custom-btn"
+                  class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                  disabled
+                >
+                  Start Adventure
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Add to DOM
+        document.body.appendChild(modal);
+
+        const textarea = document.getElementById(
+          "custom-prompt-textarea",
+        );
+        const charCount = document.getElementById("char-count");
+        const startBtn = document.getElementById("start-custom-btn");
+
+        // Character count and validation
+        textarea.addEventListener("input", () => {
+          const length = textarea.value.trim().length;
+          charCount.textContent = length;
+          startBtn.disabled = length === 0;
+        });
+
+        // Event listeners
+        startBtn.addEventListener("click", () => {
+          const customPrompt = textarea.value.trim();
+          if (customPrompt && apiKey) {
+            closeCustomPromptDialog();
+            initGameWithCustomPrompt(customPrompt);
+          }
+        });
+
+        document.getElementById("cancel-custom-btn").addEventListener(
+          "click",
+          () => {
+            closeCustomPromptDialog();
+            showPromptSelectionDialog();
+          },
+        );
+
+        // Close on overlay click
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) {
+            closeCustomPromptDialog();
+            showPromptSelectionDialog();
+          }
+        });
+
+        // Focus textarea
+        textarea.focus();
+      }
+
+      function closePromptSelectionDialog() {
+        const modal = document.getElementById("prompt-selection-modal");
+        if (modal) {
+          modal.remove();
+        }
+      }
+
+      function closeCustomPromptDialog() {
+        const modal = document.getElementById("custom-prompt-modal");
+        if (modal) {
+          modal.remove();
+        }
+      }
+
+      // Sharing Functions
+      function shareAdventure() {
+        if (storyHistory.length === 0) {
+          alert(
+            "No adventure to share yet! Start playing to create a shareable link.",
+          );
+          return;
+        }
+
+        try {
+          // Create shareable data
+          const shareData = {
+            storyHistory: storyHistory,
+            previousImageBase64: previousImageBase64,
+            timestamp: Date.now(),
+            conversationId: currentConversationId,
+            title: getConversationTitle(),
+          };
+
+          // Encode the data (handle Unicode characters)
+          const jsonString = JSON.stringify(shareData);
+          const encodedData = btoa(encodeURIComponent(jsonString));
+
+          // Create shareable URL
+          const shareUrl =
+            `${window.location.origin}${window.location.pathname}?adventure=${encodedData}`;
+
+          // Copy to clipboard
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            alert(
+              "Adventure link copied to clipboard! Share it with others to let them continue your story.",
+            );
+          }).catch(() => {
+            // Fallback for older browsers
+            const textArea = document.createElement("textarea");
+            textArea.value = shareUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textArea);
+            alert(
+              "Adventure link copied to clipboard! Share it with others to let them continue your story.",
+            );
+          });
+        } catch (error) {
+          console.error("Failed to share adventure:", error);
+          alert("Failed to create shareable link. Please try again.");
+        }
+      }
+
+      function loadAdventureFromUrl() {
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const adventureData = urlParams.get("adventure");
+
+          if (adventureData) {
+            // Decode the data (handle Unicode characters)
+            const decodedData = JSON.parse(
+              decodeURIComponent(atob(adventureData)),
+            );
+
+            if (
+              decodedData.storyHistory &&
+              decodedData.storyHistory.length > 0
+            ) {
+              // Load the shared adventure
+              storyHistory = decodedData.storyHistory;
+              previousImageBase64 = decodedData.previousImageBase64;
+
+              // Update game state
+              gameState.storyHistory = storyHistory;
+              gameState.previousImageBase64 = previousImageBase64;
+              gameState.isInitialized = true;
+
+              // Save to localStorage
+              saveGameState();
+
+              // Restore UI
+              restoreGameUI();
+
+              // Show welcome message
+              addStoryEntry(
+                "Welcome! You're continuing a shared adventure...",
+                null,
+              );
+
+              // Clean up URL
+              const newUrl = window.location.origin +
+                window.location.pathname;
+              window.history.replaceState({}, document.title, newUrl);
+
+              return true;
+            }
+          }
+        } catch (error) {
+          console.warn("Failed to load adventure from URL:", error);
+        }
+
+        return false;
+      }
+
+      function checkApiKey() {
+        if (!apiKey) {
+          const userApiKey = prompt(
+            "Please enter your Google GenAI API key to start the adventure:\n\nYou can get a free API key at: https://aistudio.google.com/app/apikey",
+          );
+          if (userApiKey && userApiKey.trim()) {
+            apiKey = userApiKey.trim();
+            localStorage.setItem("geminiApiKey", apiKey);
+            initGame();
+          } else {
+            // Show error message if no API key provided
+            addStoryEntry(
+              "No API key provided. Please refresh the page and enter your Google GenAI API key to start playing.",
+              null,
+            );
+            updateChoices([
+              "Refresh Page",
+              "Enter API Key",
+            ]);
+
+            // Handle the special buttons
+            const refreshBtn = document.querySelector(
+              "#choices-container button:first-child",
+            );
+            const apiKeyBtn = document.querySelector(
+              "#choices-container button:last-child",
+            );
+
+            if (refreshBtn) {
+              refreshBtn.addEventListener(
+                "click",
+                () => window.location.reload(),
+              );
+            }
+            if (apiKeyBtn) {
+              apiKeyBtn.addEventListener("click", () => {
+                const newApiKey = prompt(
+                  "Please enter your Google GenAI API key:",
+                );
+                if (newApiKey && newApiKey.trim()) {
+                  apiKey = newApiKey.trim();
+                  localStorage.setItem("geminiApiKey", apiKey);
+                  choicesContainer.innerHTML = "";
+                  initGame();
+                }
+              });
+            }
+          }
+        } else {
+          // Check if we have a current conversation to continue
+          if (currentConversationId && storyHistory.length > 0) {
+            // Game already restored by loadConversations, just show a welcome message
+            addStoryEntry(
+              "Welcome back! Your adventure continues...",
+              null,
+            );
+          } else if (currentConversationId) {
+            // Start a new game in the current conversation
+            initGame();
+          }
+        }
+      }
+
+      async function initGame(customPrompt = null) {
+        setLoading(true);
+
+        try {
+          // Generate initial story
+          const initialStory = await generateInitialStory(customPrompt);
+
+          // Extract choices from the story and clean the text
+          const { choices: initialChoices, cleanedStory } =
+            extractChoicesFromStory(initialStory);
+
+          // Try to generate initial image, but continue if it fails
+          let initialImage = null;
+          try {
+            initialImage = await generateInitialImage(cleanedStory);
+          } catch (imageError) {
+            console.warn(
+              "Image generation failed, continuing without image:",
+              imageError,
+            );
+          }
+
+          // Generate alt text for the image using cleaned story
+          let altText = null;
+          if (initialImage) {
+            try {
+              altText = await generateImageAltText(cleanedStory);
+            } catch (altError) {
+              console.warn("Failed to generate alt text:", altError);
+            }
+          }
+
+          // Add to UI with cleaned story text
+          addStoryEntry(cleanedStory, initialImage, false, altText);
+
+          // Update choices
+          updateChoices(initialChoices);
+
+          // Store initial state
+          storyHistory.push({
+            role: "user",
+            parts: [{ text: "Start the adventure" }],
+          });
+          storyHistory.push({
+            role: "model",
+            parts: [{ text: cleanedStory }],
+          });
+          previousImageBase64 = initialImage;
+
+          // Save game state
+          saveGameState();
+        } catch (error) {
+          console.error("Failed to initialize game:", error);
+          const errorMessage = error.message.includes("Invalid API key")
+            ? "Invalid API key detected. Please check your Google GenAI API key and try again."
+            : error.message.includes("Rate limit")
+            ? "API rate limit exceeded. Please wait a moment and try again."
+            : "Failed to start the adventure. Please check your API key and try again.";
+
+          addStoryEntry(errorMessage, null);
+          updateChoices([
+            "Refresh Page",
+            "Change API Key",
+          ]);
+
+          // Handle error recovery
+          const refreshBtn = document.querySelector(
+            "#choices-container button:first-child",
+          );
+          const apiKeyBtn = document.querySelector(
+            "#choices-container button:last-child",
+          );
+
+          if (refreshBtn) {
+            refreshBtn.addEventListener(
+              "click",
+              () => window.location.reload(),
+            );
+          }
+          if (apiKeyBtn) {
+            apiKeyBtn.addEventListener("click", () => {
+              const newApiKey = prompt(
+                "Please enter a new Google GenAI API key:",
+              );
+              if (newApiKey && newApiKey.trim()) {
+                apiKey = newApiKey.trim();
+                localStorage.setItem("geminiApiKey", apiKey);
+                choicesContainer.innerHTML = "";
+                initGame();
+              }
+            });
+          }
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      async function initGameWithCustomPrompt(customPrompt) {
+        setLoading(true);
+
+        try {
+          // Generate initial story with custom prompt
+          const initialStory = await generateInitialStory(customPrompt);
+
+          // Extract choices from the story and clean the text
+          const { choices: initialChoices, cleanedStory } =
+            extractChoicesFromStory(initialStory);
+
+          // Try to generate initial image, but continue if it fails
+          let initialImage = null;
+          try {
+            initialImage = await generateInitialImage(cleanedStory);
+          } catch (imageError) {
+            console.warn(
+              "Image generation failed, continuing without image:",
+              imageError,
+            );
+          }
+
+          // Generate alt text for the image using cleaned story
+          let altText = null;
+          if (initialImage) {
+            try {
+              altText = await generateImageAltText(cleanedStory);
+            } catch (altError) {
+              console.warn("Failed to generate alt text:", altError);
+            }
+          }
+
+          // Add to UI with cleaned story text
+          addStoryEntry(cleanedStory, initialImage, false, altText);
+
+          // Update choices
+          updateChoices(initialChoices);
+
+          // Store initial state
+          storyHistory.push({
+            role: "user",
+            parts: [{ text: customPrompt }],
+          });
+          storyHistory.push({
+            role: "model",
+            parts: [{ text: cleanedStory }],
+          });
+          previousImageBase64 = initialImage;
+
+          // Save game state
+          saveGameState();
+        } catch (error) {
+          console.error(
+            "Failed to initialize game with custom prompt:",
+            error,
+          );
+          const errorMessage = error.message.includes("Invalid API key")
+            ? "Invalid API key detected. Please check your Google GenAI API key and try again."
+            : error.message.includes("Rate limit")
+            ? "API rate limit exceeded. Please wait a moment and try again."
+            : "Failed to start your custom adventure. Please check your API key and try again.";
+
+          addStoryEntry(errorMessage, null);
+          updateChoices([
+            "Refresh Page",
+            "Change API Key",
+            "Try Again",
+            "Start New Adventure",
+          ]);
+
+          // Handle the special buttons
+          const refreshBtn = document.querySelector(
+            "#choices-container button:first-child",
+          );
+          const apiKeyBtn = document.querySelector(
+            "#choices-container button:nth-child(2)",
+          );
+          const retryBtn = document.querySelector(
+            "#choices-container button:nth-child(3)",
+          );
+          const newAdventureBtn = document.querySelector(
+            "#choices-container button:last-child",
+          );
+
+          if (refreshBtn) {
+            refreshBtn.addEventListener(
+              "click",
+              () => window.location.reload(),
+            );
+          }
+          if (apiKeyBtn) {
+            apiKeyBtn.addEventListener("click", () => {
+              const newApiKey = prompt(
+                "Enter your new Google GenAI API key:",
+              );
+              if (newApiKey && newApiKey.trim()) {
+                apiKey = newApiKey.trim();
+                localStorage.setItem("geminiApiKey", apiKey);
+                initGameWithCustomPrompt(customPrompt);
+              }
+            });
+          }
+          if (retryBtn) {
+            retryBtn.addEventListener("click", () => {
+              initGameWithCustomPrompt(customPrompt);
+            });
+          }
+          if (newAdventureBtn) {
+            newAdventureBtn.addEventListener("click", () => {
+              createNewConversation();
+            });
+          }
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      async function handlePlayerChoice(choiceText) {
+        if (isLoading || !choiceText.trim()) return;
+
+        // Prevent duplicate messages
+        if (lastUserMessage === choiceText) return;
+        lastUserMessage = choiceText;
+
+        setLoading(true);
+
+        try {
+          // Display user's choice in the chat history
+          addStoryEntry(choiceText, null, true);
+
+          // Add player choice to history
+          storyHistory.push({
+            role: "user",
+            parts: [{ text: choiceText }],
+          });
+
+          // Generate next story part
+          const nextStory = await generateTextWithHistory();
+
+          // Try to generate image with continuity, but continue if it fails
+          let nextImage = null;
+          try {
+            nextImage = await generateImageWithContinuity(
+              nextStory,
+              choiceText,
+            );
+          } catch (imageError) {
+            console.warn(
+              "Image generation failed, continuing without image:",
+              imageError,
+            );
+          }
+
+          // Generate alt text for the image
+          let altText = null;
+          if (nextImage) {
+            try {
+              altText = await generateImageAltText(
+                nextStory,
+                choiceText,
+              );
+            } catch (altError) {
+              console.warn("Failed to generate alt text:", altError);
+            }
+          }
+
+          // Extract new choices from story and clean the text
+          const { choices: newChoices, cleanedStory } =
+            extractChoicesFromStory(nextStory);
+
+          // Update UI with cleaned story text
+          addStoryEntry(cleanedStory, nextImage, false, altText);
+
+          // Update choices
+          updateChoices(newChoices);
+
+          // Update state with cleaned story
+          storyHistory.push({
+            role: "model",
+            parts: [{ text: cleanedStory }],
+          });
+          previousImageBase64 = nextImage;
+
+          // Save game state
+          saveGameState();
+
+          // Reset last user message to allow same choice again
+          lastUserMessage = null;
+        } catch (error) {
+          console.error("Failed to process choice:", error);
+          const errorMessage = error.message.includes("Invalid API key")
+            ? "API key issue detected. Please update your API key in settings."
+            : error.message.includes("Rate limit")
+            ? "Rate limit exceeded. Please wait a moment before trying again."
+            : "Something went wrong. Please try again.";
+
+          addStoryEntry(errorMessage, null);
+
+          // Reset last user message on error
+          lastUserMessage = null;
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      function addStoryEntry(
+        text,
+        imageBase64,
+        isUserMessage = false,
+        altText = null,
+      ) {
+        const storyEntry = document.createElement("div");
+
+        if (isUserMessage) {
+          // User message styling - right aligned, different color
+          storyEntry.className =
+            "story-entry bg-blue-600 rounded-lg p-4 ml-8 mb-2";
+          storyEntry.innerHTML =
+            `<p class="text-white text-right leading-relaxed">${text}</p>`;
+        } else {
+          // AI message styling - left aligned, original styling
+          storyEntry.className =
+            "story-entry bg-gray-800 rounded-lg p-4 mr-8";
+          let html =
+            `<p class="story-text text-white leading-relaxed mb-3">${text}</p>`;
+
+          if (imageBase64) {
+            const alt = altText ||
+              "Scene illustration from the adventure story";
+            html +=
+              `<img src="data:image/jpeg;base64,${imageBase64}" alt="${alt}" class="w-full h-48 object-cover rounded-lg mb-3">`;
+          }
+
+          storyEntry.innerHTML = html;
+        }
+
+        storyLog.appendChild(storyEntry);
+
+        // Scroll to bottom
+        storyLog.scrollTop = storyLog.scrollHeight;
+      }
+
+      function scrollToBottom() {
+        // Ensure the story log scrolls to the bottom
+        if (storyLog) {
+          storyLog.scrollTop = storyLog.scrollHeight;
+        }
+      }
+
+      function updateChoices(choices) {
+        choicesContainer.innerHTML = "";
+
+        choices.forEach((choice) => {
+          const button = document.createElement("button");
+          button.className =
+            "choice-btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200";
+          button.textContent = choice;
+          button.addEventListener(
+            "click",
+            () => handlePlayerChoice(choice),
+          );
+          choicesContainer.appendChild(button);
+        });
+      }
+
+      function setLoading(state) {
+        isLoading = state;
+        loadingIndicator.classList.toggle("hidden", !state);
+        inputArea.classList.toggle("opacity-50", state);
+        inputArea.classList.toggle("pointer-events-none", state);
+      }
+
+      function extractChoicesFromStory(story) {
+        try {
+          let choices = null;
+          let cleanedStory = story;
+
+          // Method 1: Look for CHOICES: section with inline format (like the example)
+          const inlineChoicesMatch = story.match(
+            /CHOICES:\s*((?:\d+\.\s*[^.]*\.\s*)*)/i,
+          );
+
+          if (inlineChoicesMatch) {
+            const choicesText = inlineChoicesMatch[1];
+            choices = choicesText
+              .split(/(?=\d+\.\s*)/) // Split on number prefix
+              .filter((line) => line.trim())
+              .map((line) => {
+                // Remove the number prefix and clean up
+                return line.replace(/^\d+\.\s*/, "").trim();
+              })
+              .filter((choice) => choice.length > 0);
+
+            if (choices.length === 4) {
+              // Remove the CHOICES section from the story
+              cleanedStory = story.replace(
+                /CHOICES:\s*((?:\d+\.\s*[^.]*\.\s*)*)/i,
+                "",
+              ).trim();
+              return { choices, cleanedStory };
+            }
+          }
+
+          // Method 2: Look for CHOICES: section with newline format
+          const newlineChoicesMatch = story.match(
+            /CHOICES:\s*\n((?:\d+\.\s*.*\n?)*)/i,
+          );
+
+          if (newlineChoicesMatch) {
+            const choicesText = newlineChoicesMatch[1];
+            choices = choicesText
+              .split("\n")
+              .filter((line) => line.trim())
+              .map((line) => {
+                // Remove the number prefix (e.g., "1. " or "2. ")
+                return line.replace(/^\d+\.\s*/, "").trim();
+              })
+              .filter((choice) => choice.length > 0);
+
+            if (choices.length === 4) {
+              // Remove the CHOICES section from the story
+              cleanedStory = story.replace(
+                /CHOICES:\s*\n((?:\d+\.\s*.*\n?)*)/i,
+                "",
+              ).trim();
+              return { choices, cleanedStory };
+            }
+          }
+
+          // Method 3: Look for numbered choices anywhere in the text
+          const numberedChoicesMatch = story.match(
+            /(\d+\.\s*[^.]*\.\s*){4}/i,
+          );
+
+          if (numberedChoicesMatch) {
+            const choicesText = numberedChoicesMatch[0];
+            choices = choicesText
+              .split(/(?=\d+\.\s*)/) // Split on number prefix
+              .filter((line) => line.trim())
+              .map((line) => {
+                return line.replace(/^\d+\.\s*/, "").trim();
+              })
+              .filter((choice) => choice.length > 0);
+
+            if (choices.length === 4) {
+              // Remove the numbered choices from the story
+              cleanedStory = story.replace(
+                /(\d+\.\s*[^.]*\.\s*){4}/i,
+                "",
+              ).trim();
+              return { choices, cleanedStory };
+            }
+          }
+
+          // Method 4: Fallback - extract all numbered lines
+          const lines = story.split(/\n|\.\s*(?=\d+\.)/); // Split on newlines or periods followed by numbers
+          choices = [];
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            // Look for numbered choices (1., 2., 3., 4.)
+            if (/^\d+\.\s*/.test(line)) {
+              const choice = line.replace(/^\d+\.\s*/, "").trim();
+              if (choice.length > 0) {
+                choices.push(choice);
+              }
+            }
+          }
+
+          // Return choices if we found 4, otherwise use defaults
+          if (choices.length === 4) {
+            // Remove all numbered lines from the story
+            cleanedStory = story.replace(/^\d+\.\s*.*$/gm, "").trim();
+            return { choices, cleanedStory };
+          }
+        } catch (error) {
+          console.warn("Failed to extract choices from story:", error);
+        }
+
+        // Fallback to default choices if parsing fails
+        const defaultChoices = [
+          "Continue forward",
+          "Explore the area",
+          "Search for clues",
+          "Take a different path",
+        ];
+        return { choices: defaultChoices, cleanedStory: story };
+      }
+
+      // API Functions
+      async function makeApiCall(url, payload) {
+        const maxRetries = 5;
+        let retryCount = 0;
+
+        while (retryCount < maxRetries) {
+          try {
+            const response = await fetch(`${url}?key=${apiKey}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+              if (response.status === 400) {
+                throw new Error(
+                  "Bad request. The image generation model may not be available or the request format is incorrect.",
+                );
+              } else if (response.status === 401) {
+                throw new Error(
+                  "Invalid API key. Please check your Google GenAI API key.",
+                );
+              } else if (response.status === 403) {
+                throw new Error(
+                  "API access forbidden. Please check your API key permissions.",
+                );
+              } else if (response.status === 429) {
+                throw new Error(
+                  "Rate limit exceeded. Please wait a moment and try again.",
+                );
+              } else {
+                throw new Error(
+                  `HTTP error! status: ${response.status}`,
+                );
+              }
+            }
+
+            return await response.json();
+          } catch (error) {
+            retryCount++;
+            if (retryCount === maxRetries) {
+              throw error;
+            }
+
+            // Exponential backoff
+            const delay = Math.pow(2, retryCount) * 1000;
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+        }
+      }
+
+      async function generateInitialStory(customPrompt = null) {
+        let promptText;
+
+        if (customPrompt) {
+          promptText =
+            `You are a master storyteller creating an immersive Choose-Your-Own-Adventure game. The player has provided this custom prompt for their adventure: "${customPrompt}"\n\nGenerate an opening scene based on this prompt that sets up an exciting adventure. The scene should be descriptive and atmospheric, ending with a question or decision point. Keep it under 100 words and make it engaging.\n\nAfter your story, provide exactly 4 different action choices that the player can take next. Format your response as:\n\n[STORY TEXT]\n\nCHOICES:\n1. [Choice 1]\n2. [Choice 2]\n3. [Choice 3]\n4. [Choice 4]`;
+        } else {
+          promptText =
+            "You are a master storyteller creating an immersive Choose-Your-Own-Adventure game. Generate an opening scene that sets up an exciting adventure. The scene should be descriptive and atmospheric, ending with a question or decision point. Keep it under 100 words and make it engaging.\n\nAfter your story, provide exactly 4 different action choices that the player can take next. Format your response as:\n\n[STORY TEXT]\n\nCHOICES:\n1. [Choice 1]\n2. [Choice 2]\n3. [Choice 3]\n4. [Choice 4]";
+        }
+
+        const payload = {
+          contents: [{
+            parts: [{
+              text: promptText,
+            }],
+          }],
+        };
+
+        const response = await makeApiCall(textGenerationUrl, payload);
+        return response.candidates[0].content.parts[0].text;
+      }
+
+      async function generateInitialImage(storyText) {
+        const payload = {
+          contents: [{
+            parts: [{
+              text:
+                `Generate an atmospheric image for this scene: ${storyText}. The image should be dark, mysterious, and cinematic, suitable for a mobile game interface.`,
+            }],
+          }],
+        };
+
+        const response = await makeApiCall(imageGenerationUrl, payload);
+
+        // Handle different response formats
+        if (
+          response.candidates && response.candidates[0] &&
+          response.candidates[0].content
+        ) {
+          const parts = response.candidates[0].content.parts;
+          // Look for image data in any of the parts
+          for (let i = 0; i < parts.length; i++) {
+            if (
+              parts[i] && parts[i].inlineData &&
+              parts[i].inlineData.data
+            ) {
+              return parts[i].inlineData.data;
+            }
+          }
+        }
+
+        // If no image data found, return null to continue without image
+        console.warn("No image data found in response:", response);
+        return null;
+      }
+
+      async function generateImageAltText(
+        storyText,
+        userAction = null,
+      ) {
+        try {
+          let promptText;
+          if (userAction) {
+            promptText =
+              `Based on this story scene and the player's action, generate a concise alt text description for an image (under 100 characters):\n\nStory: ${storyText}\n\nPlayer Action: ${userAction}\n\nProvide a brief, descriptive alt text that captures the key visual elements of the scene.`;
+          } else {
+            promptText =
+              `Based on this story scene, generate a concise alt text description for an image (under 100 characters):\n\n${storyText}\n\nProvide a brief, descriptive alt text that captures the key visual elements of the scene.`;
+          }
+
+          const payload = {
+            contents: [{
+              parts: [{
+                text: promptText,
+              }],
+            }],
+          };
+
+          const response = await makeApiCall(
+            textGenerationUrl,
+            payload,
+          );
+          return response.candidates[0].content.parts[0].text.trim();
+        } catch (error) {
+          console.warn("Failed to generate alt text:", error);
+          // Fallback to a generic alt text
+          return "Scene illustration from the adventure story";
+        }
+      }
+
+      async function generateTextWithHistory() {
+        const payload = {
+          contents: [
+            ...storyHistory,
+            {
+              role: "user",
+              parts: [{
+                text:
+                  "Continue the story based on the player's choice. After your response, provide exactly 4 different action choices that the player can take next. Format your response as:\n\n[STORY TEXT]\n\nCHOICES:\n1. [Choice 1]\n2. [Choice 2]\n3. [Choice 3]\n4. [Choice 4]",
+              }],
+            },
+          ],
+        };
+
+        const response = await makeApiCall(textGenerationUrl, payload);
+        return response.candidates[0].content.parts[0].text;
+      }
+
+      async function generateImageWithContinuity(
+        storyText,
+        userAction,
+      ) {
+        const payload = {
+          contents: [{
+            parts: [
+              {
+                text:
+                  `Generate an image that continues the visual story. Previous scene context: ${storyText}. User action: ${userAction}. Maintain visual continuity with the previous scene while showing the new development.`,
+              },
+              ...(previousImageBase64
+                ? [{
+                  inlineData: {
+                    mimeType: "image/jpeg",
+                    data: previousImageBase64,
+                  },
+                }]
+                : []),
+            ],
+          }],
+        };
+
+        const response = await makeApiCall(imageGenerationUrl, payload);
+
+        // Handle different response formats
+        if (
+          response.candidates && response.candidates[0] &&
+          response.candidates[0].content
+        ) {
+          const parts = response.candidates[0].content.parts;
+          // Look for image data in any of the parts
+          for (let i = 0; i < parts.length; i++) {
+            if (
+              parts[i] && parts[i].inlineData &&
+              parts[i].inlineData.data
+            ) {
+              return parts[i].inlineData.data;
+            }
+          }
+        }
+
+        // If no image data found, return null to continue without image
+        console.warn("No image data found in response:", response);
+        return null;
+      }
+
+      // Mock API responses for demo purposes (remove in production)
+      function mockApiResponse() {
+        return {
+          candidates: [{
+            content: {
+              parts: [{
+                text:
+                  "You find yourself in a dimly lit forest, the air thick with the scent of pine and damp earth. A narrow path winds ahead, disappearing into the shadows. To your left, a faint glow emanates from a hidden cave. What do you do?",
+              }],
+            },
+          }],
+        };
+      }
+    </script>
+  </body>
+</html>
