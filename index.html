@@ -269,7 +269,7 @@
           class="loader w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"
         >
         </div>
-        <p class="text-gray-400">AI is crafting your adventure...</p>
+        <p id="loading-text" class="text-gray-400">Preparing...</p>
       </div>
 
       <!-- Input Area -->
@@ -1148,7 +1148,7 @@
       }
 
       async function initGame(customPrompt = null) {
-        setLoading(true);
+        setLoading(true, "Writing opening scene...");
 
         try {
           // Generate initial story
@@ -1161,6 +1161,7 @@
           // Try to generate initial image, but continue if it fails
           let initialImage = null;
           try {
+            setLoading(true, "Illustrating scene...");
             initialImage = await generateInitialImage(cleanedStory);
           } catch (imageError) {
             console.warn(
@@ -1173,6 +1174,7 @@
           let altText = null;
           if (initialImage) {
             try {
+              setLoading(true, "Writing alt text...");
               altText = await generateImageAltText(cleanedStory);
             } catch (altError) {
               console.warn("Failed to generate alt text:", altError);
@@ -1245,7 +1247,7 @@
       }
 
       async function initGameWithCustomPrompt(customPrompt) {
-        setLoading(true);
+        setLoading(true, "Writing opening scene...");
 
         try {
           // Generate initial story with custom prompt
@@ -1258,6 +1260,7 @@
           // Try to generate initial image, but continue if it fails
           let initialImage = null;
           try {
+            setLoading(true, "Illustrating scene...");
             initialImage = await generateInitialImage(cleanedStory);
           } catch (imageError) {
             console.warn(
@@ -1270,6 +1273,7 @@
           let altText = null;
           if (initialImage) {
             try {
+              setLoading(true, "Writing alt text...");
               altText = await generateImageAltText(cleanedStory);
             } catch (altError) {
               console.warn("Failed to generate alt text:", altError);
@@ -1368,7 +1372,7 @@
         if (lastUserMessage === choiceText) return;
         lastUserMessage = choiceText;
 
-        setLoading(true);
+        setLoading(true, "Writing next scene...");
 
         try {
           // Display user's choice in the chat history
@@ -1386,6 +1390,7 @@
           // Try to generate image with continuity, but continue if it fails
           let nextImage = null;
           try {
+            setLoading(true, "Illustrating scene...");
             nextImage = await generateImageWithContinuity(
               nextStory,
               choiceText,
@@ -1401,6 +1406,7 @@
           let altText = null;
           if (nextImage) {
             try {
+              setLoading(true, "Writing alt text...");
               altText = await generateImageAltText(
                 nextStory,
                 choiceText,
@@ -1509,8 +1515,12 @@
         });
       }
 
-      function setLoading(state) {
+      function setLoading(state, message = null) {
         isLoading = state;
+        if (message) {
+          const loadingText = document.getElementById("loading-text");
+          if (loadingText) loadingText.textContent = message;
+        }
         loadingIndicator.classList.toggle("hidden", !state);
         inputArea.classList.toggle("opacity-50", state);
         inputArea.classList.toggle("pointer-events-none", state);
