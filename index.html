@@ -1151,12 +1151,15 @@
         setLoading(true, "Writing opening scene...");
 
         try {
-          // Generate initial story
-          const initialStory = await generateInitialStory(customPrompt);
-
-          // Extract choices from the story and clean the text
-          const { choices: initialChoices, cleanedStory } =
-            extractChoicesFromStory(initialStory);
+          // Generate initial story, choices, and alt text in one call
+          const initialData = await generateInitialStructuredStory(
+            customPrompt,
+          );
+          const cleanedStory = initialData.storyText ||
+            initialData.story || "";
+          const initialChoices = Array.isArray(initialData.choices)
+            ? initialData.choices
+            : extractChoicesFromStory(cleanedStory).choices;
 
           // Try to generate initial image, but continue if it fails
           let initialImage = null;
@@ -1170,16 +1173,8 @@
             );
           }
 
-          // Generate alt text for the image using cleaned story
-          let altText = null;
-          if (initialImage) {
-            try {
-              setLoading(true, "Writing alt text...");
-              altText = await generateImageAltText(cleanedStory);
-            } catch (altError) {
-              console.warn("Failed to generate alt text:", altError);
-            }
-          }
+          // Use alt text from structured response if available
+          let altText = initialData.altText || null;
 
           // Add to UI with cleaned story text
           addStoryEntry(cleanedStory, initialImage, false, altText);
@@ -1250,12 +1245,15 @@
         setLoading(true, "Writing opening scene...");
 
         try {
-          // Generate initial story with custom prompt
-          const initialStory = await generateInitialStory(customPrompt);
-
-          // Extract choices from the story and clean the text
-          const { choices: initialChoices, cleanedStory } =
-            extractChoicesFromStory(initialStory);
+          // Generate initial story, choices, and alt text in one call
+          const initialData = await generateInitialStructuredStory(
+            customPrompt,
+          );
+          const cleanedStory = initialData.storyText ||
+            initialData.story || "";
+          const initialChoices = Array.isArray(initialData.choices)
+            ? initialData.choices
+            : extractChoicesFromStory(cleanedStory).choices;
 
           // Try to generate initial image, but continue if it fails
           let initialImage = null;
@@ -1269,16 +1267,8 @@
             );
           }
 
-          // Generate alt text for the image using cleaned story
-          let altText = null;
-          if (initialImage) {
-            try {
-              setLoading(true, "Writing alt text...");
-              altText = await generateImageAltText(cleanedStory);
-            } catch (altError) {
-              console.warn("Failed to generate alt text:", altError);
-            }
-          }
+          // Use alt text from structured response if available
+          let altText = initialData.altText || null;
 
           // Add to UI with cleaned story text
           addStoryEntry(cleanedStory, initialImage, false, altText);
@@ -1384,8 +1374,9 @@
             parts: [{ text: choiceText }],
           });
 
-          // Generate next story part
-          const nextStory = await generateTextWithHistory();
+          // Generate next story, choices, and alt text in one call
+          const nextData = await generateTextWithHistoryStructured();
+          const nextStory = nextData.storyText || nextData.story || "";
 
           // Try to generate image with continuity, but continue if it fails
           let nextImage = null;
@@ -1402,23 +1393,14 @@
             );
           }
 
-          // Generate alt text for the image
-          let altText = null;
-          if (nextImage) {
-            try {
-              setLoading(true, "Writing alt text...");
-              altText = await generateImageAltText(
-                nextStory,
-                choiceText,
-              );
-            } catch (altError) {
-              console.warn("Failed to generate alt text:", altError);
-            }
-          }
+          // Use alt text from structured response if available
+          let altText = nextData.altText || null;
 
           // Extract new choices from story and clean the text
           const { choices: newChoices, cleanedStory } =
-            extractChoicesFromStory(nextStory);
+            Array.isArray(nextData.choices)
+              ? { choices: nextData.choices, cleanedStory: nextStory }
+              : extractChoicesFromStory(nextStory);
 
           // Update UI with cleaned story text
           addStoryEntry(cleanedStory, nextImage, false, altText);
@@ -1719,6 +1701,70 @@
         return response.candidates[0].content.parts[0].text;
       }
 
+      function buildStructuredSchemaConfig() {
+        return {
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "object",
+              properties: {
+                storyText: { type: "string" },
+                choices: {
+                  type: "array",
+                  minItems: 4,
+                  maxItems: 4,
+                  items: { type: "string" },
+                },
+                altText: { type: "string" },
+              },
+              required: ["storyText", "choices"],
+              propertyOrdering: ["storyText", "choices", "altText"],
+            },
+          },
+        };
+      }
+
+      async function generateInitialStructuredStory(
+        customPrompt = null,
+      ) {
+        let promptText;
+        if (customPrompt) {
+          promptText =
+            `You are a master storyteller creating an immersive Choose-Your-Own-Adventure game. The player provided this custom prompt: "${customPrompt}".
+
+Write an opening scene under 100 words. Do NOT include numbered choices in the narrative body. Then propose exactly 4 distinct next actions suitable for buttons. Also provide a concise alt text (under 100 characters) that describes the scene image.
+
+Return ONLY JSON with fields: storyText, choices (4 items), altText.`;
+        } else {
+          promptText =
+            `You are a master storyteller creating an immersive Choose-Your-Own-Adventure game.
+
+Write an opening scene under 100 words. Do NOT include numbered choices in the narrative body. Then propose exactly 4 distinct next actions suitable for buttons. Also provide a concise alt text (under 100 characters) that describes the scene image.
+
+Return ONLY JSON with fields: storyText, choices (4 items), altText.`;
+        }
+
+        const payload = {
+          contents: [{ parts: [{ text: promptText }] }],
+          ...buildStructuredSchemaConfig(),
+        };
+
+        const response = await makeApiCall(textGenerationUrl, payload);
+        const text = response.candidates[0].content.parts[0].text;
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.warn(
+            "Failed to parse structured JSON, falling back:",
+            e,
+          );
+          const { choices, cleanedStory } = extractChoicesFromStory(
+            text,
+          );
+          return { storyText: cleanedStory, choices, altText: null };
+        }
+      }
+
       async function generateInitialImage(storyText) {
         const payload = {
           contents: [{
@@ -1788,21 +1834,33 @@
       }
 
       async function generateTextWithHistory() {
+        const prompt =
+          `Continue the story based on the player's last action. Do NOT include numbered choices inside the narrative body. Then propose exactly 4 distinct next actions suitable for buttons. Also provide a concise alt text (under 100 characters) that describes the scene image.
+
+Return ONLY JSON with fields: storyText, choices (4 items), altText.`;
+
         const payload = {
           contents: [
             ...storyHistory,
-            {
-              role: "user",
-              parts: [{
-                text:
-                  "Continue the story based on the player's choice. After your response, provide exactly 4 different action choices that the player can take next. Format your response as:\n\n[STORY TEXT]\n\nCHOICES:\n1. [Choice 1]\n2. [Choice 2]\n3. [Choice 3]\n4. [Choice 4]",
-              }],
-            },
+            { role: "user", parts: [{ text: prompt }] },
           ],
+          ...buildStructuredSchemaConfig(),
         };
 
         const response = await makeApiCall(textGenerationUrl, payload);
-        return response.candidates[0].content.parts[0].text;
+        const text = response.candidates[0].content.parts[0].text;
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.warn(
+            "Failed to parse structured JSON, falling back:",
+            e,
+          );
+          const { choices, cleanedStory } = extractChoicesFromStory(
+            text,
+          );
+          return { storyText: cleanedStory, choices, altText: null };
+        }
       }
 
       async function generateImageWithContinuity(
