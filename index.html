@@ -415,11 +415,10 @@
         } else if (choice === "2") {
           if (
             confirm(
-              "Are you sure you want to start a new game? This will clear your current progress.",
+              "Start a new game? You'll be prompted to choose Random or Custom.",
             )
           ) {
-            clearGameState();
-            initGame();
+            createNewConversation();
           }
         }
       });
