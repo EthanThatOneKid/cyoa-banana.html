@@ -52,6 +52,10 @@ npx http-server
 3. **Enter your API key** when prompted
 4. **Start your adventure!** Choose between random or custom prompts
 
+## Demo Video
+
+Watch on YouTube: https://youtu.be/itpfYMkGe40?si=cbqUqAnLSmjjbRV4
+
 ## How to Play
 
 ### Starting an Adventure
